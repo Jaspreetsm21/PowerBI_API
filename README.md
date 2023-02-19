@@ -1,5 +1,9 @@
-# PowerBI_API
-PowerBI API to extract the reports and dataset/dataflo
+# PowerBI API - End to End Guide (API--Pipeline--Linux--Crontab--SQL)
+
+There are two ways to set up a PowerBI API:
+ - manually using the temp access_token using your Login details
+ - End to End using Microsoft Azure
+
 
 Important Links:
 
