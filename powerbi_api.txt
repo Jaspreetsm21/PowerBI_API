@@ -1,0 +1,122 @@
+import pandas as pd
+import requests
+import json
+import msal
+
+
+#
+client_id = ''
+tenant_id = ''
+client_secret = ''
+
+authority_url = 'https://login.microsoftonline.com/' + tenant_id
+scope = ["https://analysis.windows.net/powerbi/api/.default"]
+
+app = msal.ConfidentialClientApplication(client_id,authority=authority_url,client_credential=client_secret)
+result = app.acquire_token_for_client(scopes=scope)
+access_token = result['access_token']
+
+headers = {"content-type":"application/json", "Authorization":f'Bearer {access_token}'}
+
+
+def group():
+    groups = "https://api.powerbi.com/v1.0/myorg/groups"
+    main_groups = requests.get(groups, headers=headers).json()
+    return main_groups
+
+def reports(cn:str):
+    group_report = "https://api.powerbi.com/v1.0/myorg/groups/{cn}/reports"
+    reports = requests.get(group_report.format(cn=x), headers=headers).json()
+    return reports
+
+def pages(an:str,rn:str):
+    pages_url = "https://api.powerbi.com/v1.0/myorg/groups/{an}/reports/{rn}/pages"
+    pages = requests.get(pages_url.format(an=x,rn=y), headers=headers).json()
+    return pages
+
+def dashboard(dn:str):
+    dashboard_url = "https://api.powerbi.com/v1.0/myorg/groups/{dn}/dashboards"
+    dashboard = requests.get(dashboard_url.format(dn=x), headers=headers).json()
+    return dashboard
+
+def dataset(en:str):
+    dataset_url = "https://api.powerbi.com/v1.0/myorg/groups/{en}/datasets"
+    dataset = requests.get(dataset_url.format(en=x), headers=headers).json()
+    return dataset
+
+def dataflow(fn:str):
+    dataflow_url = "https://api.powerbi.com/v1.0/myorg/groups/{fn}/dataflows"
+    dataflow = requests.get(dataflow_url.format(fn=x), headers=headers).json()
+    return dataflow
+
+def main_group():
+    groupid = [user["id"] for user in group()['value']]
+    return groupid
+
+
+
+def extract_group():
+    group_name = [user["name"] for user in group()["value"]]
+    group_type = [user["type"] for user in group()["value"]]
+    group_id =   [user["id"] for user in group()["value"]]
+    group_data = pd.DataFrame({'group_name':group_name,'group_type':group_type,'group_id':group_id})
+    return group_data
+extract_group()
+
+def extract_group_data():
+    group_name = [user["name"] for user in group()["value"]]
+    group_type = [user["type"] for user in group()["value"]]
+    group_id =   [user["id"] for user in group()["value"]]
+    group_data = pd.DataFrame({'group_name':group_name,'group_type':group_type,'group_id':group_id})
+
+
+
+for x in extract_group()['group_id']:
+    group_report_data =reports(x)
+    group_report_ID= [user["id"] for user in group_report_data["value"]]
+    group_report_name = [user["name"] for user in group_report_data["value"]]
+    group_report_appId = [user.get('appId',None) for user in group_report_data["value"] ]
+    group_report_desc= [user.get('description',None) for user in group_report_data["value"] ]
+    group_report_webUrl = [user["webUrl"] for user in group_report_data["value"]]
+    group_report_embedUrl = [user["embedUrl"] for user in group_report_data["value"]]
+    group_report_datasetId= [user["datasetId"] for user in group_report_data["value"]]
+    group_report_group = x
+    group_report_final= pd.DataFrame({'group_report_ID':group_report_ID,'group_report_appId':group_report_appId,'group_report_desc':group_report_desc,'group_report_name':group_report_name,'group_report_group':group_report_group,'group_report_webUrl':group_report_webUrl,'group_report_embedUrl':group_report_embedUrl,'group_report_datasetId':group_report_datasetId})
+
+
+for x in extract_group()['group_id']:
+    dataset_data = dataset(x)
+    if len(dataset_data['value']) != 0:
+        dataset_Name = [user['name'] for user in dataset_data["value"]]
+        dataset_ID = [user['id'] for user in dataset_data["value"]]
+        dataset_group_ID = x
+        dataset_webUrl = [user['webUrl'] for user in dataset_data["value"]]
+        dataset_embedUrl = [user['createReportEmbedURL'] for user in dataset_data["value"]]
+        dataset_isRefreshable = [user['isRefreshable'] for user in dataset_data["value"]]        
+        dataset_created_by = [user['configuredBy'] for user in dataset_data["value"]]  
+        dataset_created_date = [user['createdDate'] for user in dataset_data["value"]]          
+        dataset_data = pd.DataFrame({'dataset_Name':dataset_Name,'dataset_ID':dataset_ID,'dataset_group_ID':dataset_group_ID,'dataset_webUrl':dataset_webUrl,'dataset_embedUrl':dataset_embedUrl,'dataset_isRefreshable':dataset_isRefreshable,'dataset_created_by':dataset_created_by,'dataset_created_date':dataset_created_date})
+        
+
+
+for x in extract_group()['group_id']:
+    dashboard_data =dashboard(x)
+    if len(dashboard_data['value']) != 0:
+        dash_Name = [user['displayName'] for user in dashboard_data["value"]]
+        dash_ID = [user['id'] for user in dashboard_data["value"]]
+        dash_group_ID = x
+        dash_webUrl = [user['webUrl'] for user in dashboard_data["value"]]
+        dash_embedUrl = [user['embedUrl'] for user in dashboard_data["value"]]
+        dash_data = pd.DataFrame({'dash_Name':dash_Name,'dash_ID':dash_ID,'dash_group_ID':dash_group_ID,'dash_webUrl':dash_webUrl,'dash_embedUrl':dash_embedUrl})
+         
+
+            
+for x in extract_group()['group_id']:
+    data_flow = dataflow(x)
+    if len(data_flow['value']) != 0:
+        dataflow_Name = [user['name'] for user in data_flow["value"]]
+        dataflow_ID = [user['objectId'] for user in data_flow["value"]]
+        dataflow_group_ID = x
+        dataflow_desc = [user['description'] for user in data_flow["value"]]       
+        dataflow_created_by = [user['configuredBy'] for user in data_flow["value"]]       
+        dataflow_data = pd.DataFrame({'dataflow_Name':dataflow_Name,'dataflow_ID':dataflow_ID,'dataflow_group_ID':dataflow_group_ID,'dataflow_desc':dataflow_desc,'dataflow_created_by':dataflow_created_by})
